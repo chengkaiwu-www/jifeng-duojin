@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微信小游戏架构设计方案</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --ink:#1a1d23;
+    --ink-2:#4a5261;
+    --ink-3:#858e9e;
+    --line:#e4e7ec;
+    --line-2:#eef0f4;
+    --brand:#07c160;          /* 微信绿 */
+    --brand-soft:#eaf9f0;
+    --accent:#2f6bff;         /* 蓝 */
+    --accent-soft:#eef3ff;
+    --warn:#f5a524;
+    --warn-soft:#fef5e7;
+    --danger:#e5484d;
+    --danger-soft:#fdecec;
+    --purple:#7c5cff;
+    --purple-soft:#f1eeff;
+    --radius:14px;
+    --radius-sm:9px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px 96px;}
+
+  /* ---------- 封面 ---------- */
+  .hero{
+    background:linear-gradient(135deg,#07c160 0%,#06a84f 55%,#048c43 100%);
+    color:#fff;border-radius:0 0 28px 28px;
+    padding:56px 24px 48px;margin-bottom:36px;
+    box-shadow:0 12px 32px rgba(7,193,96,.18);
+  }
+  .hero-inner{max-width:1040px;margin:0 auto;padding:0 24px;}
+  .hero .eyebrow{
+    display:inline-block;font-size:12px;letter-spacing:.16em;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+    padding:4px 12px;border-radius:999px;margin-bottom:16px;
+  }
+  .hero h1{margin:0 0 12px;font-size:34px;line-height:1.25;font-weight:700;letter-spacing:-.01em;}
+  .hero p{margin:0;color:rgba(255,255,255,.9);font-size:15px;max-width:720px;}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;}
+  .hero-meta span{
+    font-size:12.5px;background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.22);
+    padding:5px 12px;border-radius:999px;
+  }
+
+  /* ---------- 通用区块 ---------- */
+  section{margin-bottom:44px;}
+  h2{
+    font-size:22px;margin:0 0 6px;font-weight:700;letter-spacing:-.01em;
+    display:flex;align-items:center;gap:10px;
+  }
+  h2 .num{
+    flex:none;width:30px;height:30px;border-radius:9px;
+    background:var(--brand);color:#fff;font-size:14px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  h3{font-size:16.5px;margin:26px 0 10px;font-weight:700;color:var(--ink);}
+  h4{font-size:14.5px;margin:18px 0 8px;font-weight:700;color:var(--ink-2);}
+  .lead{color:var(--ink-2);margin:0 0 18px;font-size:14.5px;}
+  p{margin:0 0 12px;color:var(--ink-2);}
+  strong{color:var(--ink);font-weight:600;}
+  code{
+    font-family:"SF Mono",ui-monospace,Consolas,"Liberation Mono",monospace;
+    font-size:12.8px;background:var(--line-2);color:#c0392b;
+    padding:2px 6px;border-radius:5px;
+  }
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:22px 24px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .grid{display:grid;gap:16px;}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .g3{grid-template-columns:repeat(3,minmax(0,1fr));}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr;}}
+
+  /* ---------- 表格 ---------- */
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;margin:8px 0 4px;}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line-2);vertical-align:top;}
+  thead th{
+    background:#f8fafb;font-weight:700;color:var(--ink-2);font-size:12.5px;
+    letter-spacing:.02em;border-bottom:1px solid var(--line);
+  }
+  thead th:first-child{border-radius:var(--radius-sm) 0 0 0;}
+  thead th:last-child{border-radius:0 var(--radius-sm) 0 0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fbfcfd;}
+  td code{font-size:12.2px;}
+
+  /* ---------- 徽章 ---------- */
+  .tag{
+    display:inline-block;font-size:11.5px;font-weight:600;
+    padding:2px 9px;border-radius:999px;white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .t-green{background:var(--brand-soft);color:#048c43;border-color:#c6eed7;}
+  .t-blue{background:var(--accent-soft);color:#1d4ed8;border-color:#cfdcff;}
+  .t-warn{background:var(--warn-soft);color:#a06400;border-color:#f8e0b0;}
+  .t-red{background:var(--danger-soft);color:#c0272c;border-color:#f7cdcf;}
+  .t-purple{background:var(--purple-soft);color:#5a3fd6;border-color:#ddd5ff;}
+  .t-gray{background:#f2f4f7;color:#5b6473;border-color:#e3e7ec;}
+
+  /* ---------- 分层架构图 ---------- */
+  .layers{display:flex;flex-direction:column;gap:10px;}
+  .layer{
+    border-radius:var(--radius-sm);padding:14px 18px;
+    border:1px solid var(--line);background:var(--panel);
+    display:flex;align-items:center;gap:16px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .layer .lyr-label{
+    flex:none;width:104px;font-size:12px;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--ink-3);
+  }
+  .layer .lyr-body{flex:1;}
+  .layer .lyr-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+  .layer .lyr-desc{font-size:13px;color:var(--ink-3);}
+  .layer .lyr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+  .layer .lyr-chips em{
+    font-style:normal;font-size:12px;padding:2px 8px;border-radius:6px;
+    background:#f4f6f8;color:var(--ink-2);border:1px solid var(--line-2);
+  }
+  .l5{border-left:4px solid var(--brand);}
+  .l4{border-left:4px solid var(--accent);}
+  .l3{border-left:4px solid var(--purple);}
+  .l2{border-left:4px solid var(--warn);}
+  .l1{border-left:4px solid #8a94a6;}
+
+  /* ---------- 目录树 ---------- */
+  pre.tree{
+    background:#1e2430;color:#c8d3e0;border-radius:var(--radius-sm);
+    padding:18px 20px;font-size:12.6px;line-height:1.68;
+    overflow-x:auto;font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    margin:8px 0 4px;
+  }
+  pre.tree .c{color:#6b7a8f;}
+  pre.tree .d{color:#7ee2a8;font-weight:600;}
+  pre.tree .f{color:#d7dee8;}
+
+  /* ---------- 代码块 ---------- */
+  pre.code{
+    background:#1e2430;color:#dfe6ee;border-radius:var(--radius-sm);
+    padding:16px 18px;font-size:12.6px;line-height:1.7;overflow-x:auto;
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;margin:8px 0;
+  }
+  pre.code .k{color:#ff8fb0;}
+  pre.code .s{color:#9fe8a8;}
+  pre.code .cm{color:#6b7a8f;font-style:italic;}
+
+  /* ---------- 提示条 ---------- */
+  .note{
+    border-radius:var(--radius-sm);padding:14px 18px;margin:14px 0;
+    font-size:13.8px;display:flex;gap:12px;align-items:flex-start;
+    border:1px solid var(--line);background:var(--panel);
+  }
+  .note .ico{flex:none;font-size:16px;line-height:1.5;}
+  .note.warn{background:var(--warn-soft);border-color:#f8e0b0;}
+  .note.danger{background:var(--danger-soft);border-color:#f7cdcf;}
+  .note.ok{background:var(--brand-soft);border-color:#c6eed7;}
+  .note.info{background:var(--accent-soft);border-color:#cfdcff;}
+  .note b{color:var(--ink);}
+  .note p{margin:0;font-size:13.8px;}
+
+  /* ---------- 排期 ---------- */
+  .sched{display:flex;flex-direction:column;gap:12px;}
+  .week{
+    display:grid;grid-template-columns:104px 1fr;gap:16px;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:16px 18px;
+  }
+  .week .wk{font-weight:700;color:var(--brand);font-size:14px;}
+  .week .wk small{display:block;color:var(--ink-3);font-weight:500;font-size:12px;margin-top:2px;}
+  .week ul{margin:0;padding-left:18px;}
+  .week li{font-size:13.5px;color:var(--ink-2);margin-bottom:3px;}
+
+  /* ---------- 指标 ---------- */
+  .kpi{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:14px 16px;
+  }
+  .kpi .v{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.02em;}
+  .kpi .v small{font-size:12px;color:var(--ink-3);font-weight:500;margin-left:2px;}
+  .kpi .k{font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+
+  hr.div{border:none;border-top:1px solid var(--line);margin:34px 0;}
+  .foot{color:var(--ink-3);font-size:12.5px;text-align:center;padding-top:8px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  ul.tight{margin:8px 0;padding-left:20px;}
+  ul.tight li{font-size:13.8px;color:var(--ink-2);margin-bottom:5px;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">WECHAT MINI GAME · 架构设计方案 v1.0</span>
+    <h1>微信小游戏架构设计方案</h1>
+    <p>面向「快速上线 + 用户增长」目标,基于微信云开发的轻量小游戏技术架构。覆盖技术选型、五层架构、云开发后端、分包策略、增长裂变、合规资质与 4 周上线排期。</p>
+    <div class="hero-meta">
+      <span>原生 Canvas 小游戏</span>
+      <span>微信云开发 (CloudBase)</span>
+      <span>1–2 人团队 · 4 周 MVP</span>
+      <span>主包 ≤ 4MB / 总量 ≤ 30MB</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ========== 0. 摘要 ========== -->
+  <section>
+    <h2><span class="num">✦</span>架构摘要</h2>
+    <p class="lead">一句话:用「原生 Canvas + 自研轻量框架 + 微信云开发」把后端和运维成本压到接近零,把 4 周时间全部投在<b>核心玩法闭环</b>和<b>分享裂变</b>上,先跑通"可玩 → 可分享 → 可留存",再迭代内容和商业化。</p>
+
+    <div class="grid g3">
+      <div class="kpi"><div class="v">≤ 2<small>MB</small></div><div class="k">主包目标(首屏即下载部分)</div></div>
+      <div class="kpi"><div class="v">≤ 1.5<small>s</small></div><div class="k">中端安卓真机启动耗时</div></div>
+      <div class="kpi"><div class="v">0<small> 台</small></div><div class="k">需要运维的服务器数量</div></div>
+    </div>
+
+    <div class="note ok" style="margin-top:18px;">
+      <span class="ico">✅</span>
+      <div>
+        <p><b>关键决策:先用「自建全服排行榜」而不是「好友排行榜」做首发。</b>开放数据域的好友榜需要用户授权关系链,授权弹窗会流失一部分新用户;自建全服榜 + 段位榜零授权成本,更适合冷启动阶段冲 DAU。好友榜作为第 2 周迭代项接入。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 1. 定位 ========== -->
+  <section>
+    <h2><span class="num">1</span>先纠偏:小游戏 ≠ 小程序</h2>
+    <p class="lead">这是立项阶段最容易踩的坑。你选择的技术栈标注为"原生小程序",但在小游戏场景下,它的形态完全不同——小游戏不是页面应用,而是一个跑在微信容器里的 H5 游戏。</p>
+
+    <table>
+      <thead>
+        <tr><th style="width:20%">维度</th><th style="width:40%">微信小程序</th><th style="width:40%">微信小游戏</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>渲染方式</b></td><td>WXML + WXSS,双线程,WebView 渲染</td><td>全屏 Canvas 自绘,无标签体系</td></tr>
+        <tr><td><b>入口文件</b></td><td><code>app.js</code> / <code>app.json</code></td><td><code>game.js</code> / <code>game.json</code></td></tr>
+        <tr><td><b>页面模型</b></td><td>页面栈 + <code>Page</code> / <code>Component</code></td><td>无页面概念,需自建场景栈</td></tr>
+        <tr><td><b>UI 实现</b></td><td>声明式标签 + 组件库(TDesign 等)</td><td>全部手绘(文字/按钮/列表都要自己画)</td></tr>
+        <tr><td><b>包体上限</b></td><td>主包 2MB,总量 20MB</td><td><b>主包 4MB,总量 30MB</b></td></tr>
+        <tr><td><b>交互 API</b></td><td colspan="2"><span class="tag t-green">基本一致</span> 登录 / 支付 / 分享 / 云开发 / 广告 均可复用</td></tr>
+        <tr><td><b>特殊能力</b></td><td>无</td><td>开放数据域(关系链)、<code>wx.setUserCloudStorage</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note warn">
+      <span class="ico">⚠️</span>
+      <div>
+        <p><b>结论:</b>开发心智要切换。小游戏里没有 <code>&lt;view&gt;</code>、没有 TDesign 组件、没有 <code>setData</code>,只有 <code>wx.createCanvas()</code> 和 <code>requestAnimationFrame</code>。所有界面都是一帧一帧画出来的。</p>
+      </div>
+    </div>
+
+    <h3>1.1 技术选型决策:两条路线,一个判断标准</h3>
+
+    <table>
+      <thead>
+        <tr><th style="width:20%">方案</th><th style="width:26%">适用玩法</th><th style="width:27%">优势</th><th style="width:27%">代价</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>原生 Canvas + 轻量自研框架</b><br><span class="tag t-green">推荐首发</span></td>
+          <td>休闲 / 超休闲:点击、答题、翻牌、合成、消除、数字益智、文字类</td>
+          <td>主包最小(可压到 1MB 内)、启动最快、无构建链、调试直接、完全可控</td>
+          <td>动画/物理/粒子要自己写,玩法一旦变重会吃力</td>
+        </tr>
+        <tr>
+          <td><b>Cocos Creator 3.x</b><br><span class="tag t-blue">中度以上必选</span></td>
+          <td>含物理、骨骼动画、3D、复杂特效、长关卡链</td>
+          <td>编辑器可视化、动画/物理/粒子开箱即用、一键发布微信小游戏、市占率最高</td>
+          <td>引入引擎运行时,主包体积上升;需额外学一套工具链</td>
+        </tr>
+        <tr>
+          <td><b>Unity / LayaAir</b></td>
+          <td>3D 重度、已有 Unity 资产</td>
+          <td>3D 能力最强,Laya 在大型 3D 优化上表现好</td>
+          <td>WebGL 转换链路复杂,首包资源易超 4MB,2–4 周不现实</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note info">
+      <span class="ico">🧭</span>
+      <div>
+        <p><b>判断标准(请对号入座):</b>如果你的玩法<b>不需要物理引擎、不需要骨骼动画、单局时长 &lt; 3 分钟</b> → 选原生 Canvas,4 周能上线;否则直接上 Cocos Creator,不要硬扛自研框架。本方案的工程骨架按<b>原生 Canvas 路线</b>搭建,同时在框架层预留了与引擎的替换边界(见第 3 节 <code>platform/</code> 与 <code>framework/</code> 的分层)。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 2. 五层架构 ========== -->
+  <section>
+    <h2><span class="num">2</span>五层架构总览</h2>
+    <p class="lead">自上而下依赖单向,下层不知道上层的存在。这样做的目的很实际:<b>换引擎不换业务,换后端不换玩法</b>。</p>
+
+    <div class="layers">
+      <div class="layer l5">
+        <div class="lyr-label">L5 · 玩法层</div>
+        <div class="lyr-body">
+          <div class="lyr-title">业务与玩法(Scenes / Gameplay)</div>
+          <div class="lyr-desc">场景、关卡、分数、道具、签到、任务。这一层是唯一"因产品而异"的部分,其余层可复用。</div>
+          <div class="lyr-chips"><em>BootScene</em><em>HomeScene</em><em>GameScene</em><em>RankScene</em><em>关卡数据</em><em>道具系统</em></div>
+        </div>
+      </div>
+
+      <div class="layer l4">
+        <div class="lyr-label">L4 · 平台层</div>
+        <div class="lyr-body">
+          <div class="lyr-title">微信平台能力适配(Platform Adapter)</div>
+          <div class="lyr-desc">把 <code>wx.*</code> 回调式 API 统一封装为 Promise,并做能力降级与低版本兼容。业务层只调用语义化方法,不碰原始 API。</div>
+          <div class="lyr-chips"><em>登录授权</em><em>分享/关系链</em><em>云调用</em><em>激励视频/插屏</em><em>前后台生命周期</em><em>系统信息</em></div>
+        </div>
+      </div>
+
+      <div class="layer l3">
+        <div class="lyr-label">L3 · 框架层</div>
+        <div class="lyr-body">
+          <div class="lyr-title">轻量运行时(Minimal Runtime)</div>
+          <div class="lyr-desc">游戏的心脏。自研但保持极薄,总代码量控制在千行级,便于 1–2 人团队完全掌控。</div>
+          <div class="lyr-chips"><em>主循环/帧调度</em><em>场景栈</em><em>事件总线</em><em>资源加载与缓存</em><em>本地存档</em><em>轻量 UI 绘制</em><em>音频调度</em></div>
+        </div>
+      </div>
+
+      <div class="layer l2">
+        <div class="lyr-label">L2 · 云层</div>
+        <div class="lyr-body">
+          <div class="lyr-title">微信云开发(CloudBase)</div>
+          <div class="lyr-desc">替代自建后端。免服务器、免域名备案、免 HTTPS 证书,天然解决鉴权与弹性扩容。</div>
+          <div class="lyr-chips"><em>云函数</em><em>云数据库</em><em>云存储</em><em>定时触发器</em><em>免密钥大模型</em></div>
+        </div>
+      </div>
+
+      <div class="layer l1">
+        <div class="lyr-label">L1 · 运行时</div>
+        <div class="lyr-body">
+          <div class="lyr-title">微信小游戏容器(Minigame Runtime)</div>
+          <div class="lyr-desc">平台提供的地基,不可修改,只能适配。</div>
+          <div class="lyr-chips"><em>Canvas 2D / WebGL</em><em>wx API</em><em>分包加载</em><em>开放数据域</em><em>内存约束 ~256MB</em></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>2.1 一次「开局」的完整数据流</h3>
+    <p>以玩家点开游戏 → 登录 → 进主页 → 开局 → 结算上榜 → 分享为主线,各层职责如下:</p>
+
+<pre class="code"><span class="cm">// game.js — 唯一入口,保持绝对轻薄</span>
+require(<span class="s">'./js/main.js'</span>);
+
+<span class="cm">// js/main.js — 启动编排(骨架中为实际可运行代码)</span>
+<span class="k">async function</span> bootstrap() {
+  screen.init();        <span class="cm">// 1. 初始化画布与适配(必须最先)</span>
+  drawBootScreen(0);    <span class="cm">// 2. 立刻画加载页 —— 绝不白屏</span>
+  bindTouch();          <span class="cm">// 3. 绑定触摸(尽早,避免启动期丢输入)</span>
+  Lifecycle.init({});   <span class="cm">// 4. 绑定 onShow/onHide/onError/内存告警</span>
+  <span class="k">await</span> Cloud.init();    <span class="cm">// 5. 初始化云开发环境</span>
+  Analytics.init();     <span class="cm">// 6. 埋点(批量 + 失败落盘)</span>
+  Cloud.flushQueue();   <span class="cm">// 7. 补报上次失败的数据(不阻塞)</span>
+  Share.init();         <span class="cm">// 8. 分享与关系链</span>
+  startLoop();          <span class="cm">// 9. 启动主循环</span>
+  SceneManager.replace(<span class="s">'Boot'</span>);  <span class="cm">// 10. 进启动场景:登录 + 预加载 → 切主页</span>
+}</pre>
+
+    <p>此后:进 <code>GameScene</code> 跑玩法 → 结算时 <code>Cloud.call('submitScore')</code> 上报 → 云函数服务端校验并写库 → 返回本局排名 → 触发分享面板。每一步都只跟下一层打交道。</p>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 3. 工程目录 ========== -->
+  <section>
+    <h2><span class="num">3</span>工程目录结构</h2>
+    <p class="lead">已按此结构生成可运行骨架。<b>零构建步骤</b>——用微信开发者工具直接导入根目录即可运行,这对 1–2 人团队意味着省掉一整套构建/CI 配置成本。</p>
+
+<pre class="tree"><span class="d">小游戏/</span>
+├── <span class="f">game.js</span>                     <span class="c"># 唯一入口(小游戏约定)</span>
+├── <span class="f">game.json</span>                   <span class="c"># 全局配置:分包 / 开放数据域 / 屏幕方向</span>
+├── <span class="f">project.config.json</span>         <span class="c"># 开发者工具项目配置</span>
+├── <span class="d">js/</span>
+│   ├── <span class="f">main.js</span>                 <span class="c"># 启动编排</span>
+│   ├── <span class="d">framework/</span>              <span class="c"># L3 轻量运行时</span>
+│   │   ├── <span class="f">event-bus.js</span>        <span class="c"># 事件总线</span>
+│   │   ├── <span class="f">game-loop.js</span>        <span class="c"># 帧调度(定步长 + 插值)</span>
+│   │   ├── <span class="f">scene-manager.js</span>    <span class="c"># 场景栈</span>
+│   │   ├── <span class="f">resource-loader.js</span>  <span class="c"># 资源加载 + 缓存 + 分包</span>
+│   │   ├── <span class="f">storage.js</span>          <span class="c"># 本地存档(带版本迁移)</span>
+│   │   ├── <span class="f">ui.js</span>               <span class="c"># 轻量控件绘制(按钮/文本/进度条)</span>
+│   │   └── <span class="f">screen.js</span>           <span class="c"># 适配与坐标换算(设计分辨率 750×1334)</span>
+│   ├── <span class="d">platform/</span>               <span class="c"># L4 平台适配层</span>
+│   │   ├── <span class="f">wx-adapter.js</span>       <span class="c"># wx API Promise 化 + 能力探测</span>
+│   │   ├── <span class="f">auth.js</span>             <span class="c"># 登录 / 档案</span>
+│   │   ├── <span class="f">cloud.js</span>            <span class="c"># 云调用统一封装(超时/重试/降级)</span>
+│   │   ├── <span class="f">share.js</span>            <span class="c"># 分享 / 群分享 / 关系链</span>
+│   │   ├── <span class="f">ad.js</span>               <span class="c"># 激励视频 / 插屏 / Banner</span>
+│   │   ├── <span class="f">lifecycle.js</span>        <span class="c"># onShow/onHide/onError</span>
+│   │   └── <span class="f">analytics.js</span>        <span class="c"># 埋点上报(批量 + 失败落盘)</span>
+│   ├── <span class="d">scenes/</span>                 <span class="c"># L5 场景</span>
+│   │   ├── <span class="f">boot-scene.js</span>
+│   │   ├── <span class="f">home-scene.js</span>
+│   │   ├── <span class="f">game-scene.js</span>       <span class="c"># 玩法挂载点(此处替换为你的玩法)</span>
+│   │   └── <span class="f">rank-scene.js</span>
+│   ├── <span class="d">gameplay/</span>               <span class="c"># L5 玩法逻辑(与渲染解耦)</span>
+│   ├── <span class="d">config/</span>
+│   │   └── <span class="f">config.js</span>           <span class="c"># 环境 ID / 阈值 / 开关 ★先改这里</span>
+│   └── <span class="d">utils/</span>
+│       └── <span class="f">logger.js</span>           <span class="c"># 统一日志</span>
+├── <span class="d">subpackages/</span>                <span class="c"># 分包(不计入 4MB 主包)</span>
+│   └── <span class="d">play/</span>
+│       └── <span class="f">index.js</span>            <span class="c"># 关卡数据示例</span>
+├── <span class="d">openDataContext/</span>            <span class="c"># 开放数据域(好友排行榜,独立 JS 环境)</span>
+│   └── <span class="f">index.js</span>
+├── <span class="d">cloudfunctions/</span>             <span class="c"># 云函数(部署到云开发环境)</span>
+│   ├── <span class="d">login/</span>
+│   ├── <span class="d">submitScore/</span>            <span class="c"># 分数上报 + 服务端防作弊</span>
+│   ├── <span class="d">getRank/</span>                <span class="c"># 全服榜 / 周榜 / 好友榜</span>
+│   ├── <span class="d">saveArchive/</span>            <span class="c"># 存档同步(乐观锁)</span>
+│   └── <span class="d">dailySign/</span>              <span class="c"># 每日签到(唯一索引防重)</span>
+├── <span class="d">assets/</span>
+│   ├── <span class="d">images/</span>
+│   └── <span class="d">audio/</span>
+└── <span class="d">docs/</span>
+    └── <span class="f">架构设计.html</span></pre>
+
+    <div class="note ok">
+      <span class="ico">💡</span>
+      <div>
+        <p><b>为什么不用 TypeScript?</b>TS 需要构建步骤(tsc/webpack),会给 1–2 人团队增加环境维护和上线链路风险。骨架采用原生 JS + JSDoc 注释,IDE 依然有类型提示;等玩法稳定、团队扩张后再平滑迁移 TS 即可,分层设计保证了迁移是逐文件的、非破坏性的。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 4. 云开发后端 ========== -->
+  <section>
+    <h2><span class="num">4</span>云开发后端设计</h2>
+    <p class="lead">核心原则:<b>客户端不可信</b>。所有会影响资产/排名的写操作都必须经云函数,由服务端读取 <code>OPENID</code> 并校验。数据库权限设为"仅云函数可读写",客户端只读公开数据(如榜单展示字段)。</p>
+
+    <h3>4.1 云函数清单</h3>
+    <table>
+      <thead>
+        <tr><th style="width:16%">云函数</th><th style="width:12%">调用方</th><th style="width:38%">职责</th><th style="width:34%">关键设计</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>login</code></td><td>启动时</td>
+          <td>换取 openid,首次注册用户档案,返回自定义会话票据</td>
+          <td>从 <code>cloud.getWXContext()</code> 取 OPENID,<b>绝不信任客户端传入的 openid</b></td>
+        </tr>
+        <tr>
+          <td><code>submitScore</code></td><td>结算时</td>
+          <td>上报单局分数,更新最高分,返回本局排名与超越提示</td>
+          <td>服务端校验:分数上限、单局时长下限、上报频率限流;只保留最高分</td>
+        </tr>
+        <tr>
+          <td><code>getRank</code></td><td>榜单页</td>
+          <td>全服榜 / 周榜 / 好友榜(自建);返回 Top N + 我的排名</td>
+          <td>榜单结果<b>缓存 30–60s</b>,避免高并发下重复扫全表;用聚合管道计算名次</td>
+        </tr>
+        <tr>
+          <td><code>saveArchive</code></td><td>关键节点</td>
+          <td>同步玩家存档(关卡进度、道具、金币)</td>
+          <td><b>乐观锁</b>:带 <code>version</code> 字段,仅当新版本号 &gt; 库中版本号才写入,防多设备覆盖</td>
+        </tr>
+        <tr>
+          <td><code>dailySign</code></td><td>签到</td>
+          <td>每日签到发奖</td>
+          <td>以 <code>openid + 日期</code> 建<b>唯一索引</b>,重复提交直接失败,天然幂等</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.2 数据库集合设计</h3>
+    <p>使用云数据库(文档型)。下面 6 个集合覆盖 MVP 全部需求:</p>
+    <table>
+      <thead>
+        <tr><th style="width:16%">集合</th><th style="width:44%">关键字段</th><th style="width:20%">索引</th><th style="width:20%">权限</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>users</code></td>
+          <td><code>_openid</code>, <code>nickname</code>, <code>avatar</code>, <code>level</code>, <code>createdAt</code>, <code>lastActiveAt</code>, <code>channel</code>(获取渠道)</td>
+          <td><code>_openid</code> 唯一</td>
+          <td>仅云函数读写</td>
+        </tr>
+        <tr>
+          <td><code>scores</code></td>
+          <td><code>_openid</code>, <code>score</code>, <code>level</code>, <code>mode</code>, <code>duration</code>, <code>createdAt</code></td>
+          <td><code>score</code> 降序 + <code>createdAt</code></td>
+          <td>仅云函数写入,榜单字段可读</td>
+        </tr>
+        <tr>
+          <td><code>user_stats</code></td>
+          <td><code>_openid</code>, <code>bestScore</code>, <code>totalGames</code>, <code>totalDuration</code>, <code>winStreak</code></td>
+          <td><code>bestScore</code> 降序</td>
+          <td>仅云函数读写</td>
+        </tr>
+        <tr>
+          <td><code>archives</code></td>
+          <td><code>_openid</code>, <code>data</code>(JSON), <code>version</code>(乐观锁), <code>updatedAt</code></td>
+          <td><code>_openid</code> 唯一</td>
+          <td>仅云函数读写</td>
+        </tr>
+        <tr>
+          <td><code>sign_logs</code></td>
+          <td><code>_openid</code>, <code>date</code>(YYYY-MM-DD), <code>reward</code>, <code>createdAt</code></td>
+          <td><code>_openid + date</code> 复合唯一</td>
+          <td>仅云函数读写</td>
+        </tr>
+        <tr>
+          <td><code>configs</code></td>
+          <td><code>key</code>, <code>value</code>, <code>updatedAt</code></td>
+          <td><code>key</code> 唯一</td>
+          <td>客户端只读(远程开关/数值)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note info">
+      <span class="ico">⚡</span>
+      <div>
+        <p><b>冷启动是云开发在小游戏场景的真实痛点。</b>云函数空闲会被回收,用户突然涌入时首次调用可能等待实例启动。务必给 <code>login</code> / <code>submitScore</code> 这两个关键路径<b>配置预留并发实例</b>,并给客户端调用设置 3s 超时 + 本地兜底(上报失败就把分数存本地,下次启动补报)。骨架里的 <code>platform/cloud.js</code> 已实现这套超时/重试/落盘补报逻辑。</p>
+      </div>
+    </div>
+
+    <h3>4.3 服务端防作弊(必须做)</h3>
+    <p>小游戏的客户端代码对用户完全可见,分数必然会被改。首发至少做 4 道防线,成本很低但能挡掉 95% 的作弊:</p>
+    <ul class="tight">
+      <li><b>物理上限校验</b> —— 单局理论最高分 = <code>每秒最高得分 × 单局时长上限</code>,超出直接丢弃。</li>
+      <li><b>时长下限</b> —— 上报的 <code>duration</code> 小于玩法最短有效时长(如 5s)判为异常。</li>
+      <li><b>频率限流</b> —— 同一 openid 每分钟最多 N 次上报,超出拒绝(用 <code>createdAt</code> 索引查最近记录)。</li>
+      <li><b>只留最高分</b> —— <code>scores</code> 只持久化破纪录的局,减少写放大和查询成本。</li>
+    </ul>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 5. 分包与资源 ========== -->
+  <section>
+    <h2><span class="num">5</span>分包与资源策略</h2>
+    <p class="lead">主包 4MB 是小游戏的生命线——它决定用户点开后要等多久。策略就是一句话:<b>主包里只放"第一屏必须用到的"</b>,其余全部推到分包或远程 CDN。</p>
+
+    <table>
+      <thead><tr><th style="width:18%">位置</th><th style="width:38%">放什么</th><th style="width:22%">体积目标</th><th style="width:22%">加载时机</th></tr></thead>
+      <tbody>
+        <tr><td><b>主包</b> <span class="tag t-red">4MB 硬上限</span></td><td>game.js、框架层、平台层、BootScene + HomeScene、首关资源、UI 图集</td><td><b>≤ 2MB</b>(留一半余量)</td><td>用户点击即下载</td></tr>
+        <tr><td>分包 A</td><td>玩法场景 + 关卡数据 + 玩法贴图</td><td>不限,建议 ≤ 6MB</td><td>进入玩法时按需加载</td></tr>
+        <tr><td>分包 B</td><td>音频(背景音乐 + 音效,建议 ogg/silk 压缩)</td><td>≤ 4MB</td><td>首次进入后空闲预加载</td></tr>
+        <tr><td>分包 C</td><td>活动页 / 运营页 / 次要场景</td><td>≤ 4MB</td><td>入口点击时加载</td></tr>
+        <tr><td>远程 CDN <span class="tag t-blue">不计入包体</span></td><td>大图、高清素材、后续关卡配置、活动资源</td><td>—</td><td><code>wx.downloadFile</code> + 本地缓存</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note warn">
+      <span class="ico">📦</span>
+      <div>
+        <p><b>2026 官方口径复核:</b>代码包总量 ≤ 30MB,主包 ≤ 4MB,单个分包不限制大小。网上常见的"总量 20MB"是旧说法,不要按它规划。资源放了 CDN 就完全不受包体限制,这是最省心的扩容方式。</p>
+      </div>
+    </div>
+
+    <h3>5.1 首屏加载时序(决定用户去留的 1.5 秒)</h3>
+    <ul class="tight">
+      <li><b>0 – 200ms</b>:主包下载完(体积小的价值在此刻兑现),执行 <code>game.js</code>,初始化 Logger/云环境。</li>
+      <li><b>200 – 500ms</b>:画出一张<b>轻量加载页</b>(纯 Canvas 绘制,零图片依赖)——千万别白屏,白屏是首屏流失的头号原因。</li>
+      <li><b>500 – 1200ms</b>:并行做三件事:静默登录、加载首屏图集、拉取远程配置/公告。</li>
+      <li><b>1200ms 后</b>:进入主页可交互。<b>分包与音频的预加载排在主页空闲帧</b>,绝不阻塞首屏。</li>
+    </ul>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 6. 模块设计 ========== -->
+  <section>
+    <h2><span class="num">6</span>核心模块关键设计</h2>
+
+    <h3>6.1 主循环:定步长 + 插值,保证低端机手感一致</h3>
+    <p>不同机型帧率不同,如果按"每帧移动固定距离"写,60Hz 和 30Hz 设备的游戏速度会差一倍。骨架的 <code>game-loop.js</code> 采用固定时间步长更新 + 剩余时间插值渲染:</p>
+<pre class="code"><span class="cm">// 逻辑固定 60Hz 更新,渲染按真实 elapsed 插值 → 手感与帧率解耦</span>
+<span class="k">const</span> STEP = 1 / 60;
+<span class="k">let</span> acc = 0, last = Date.now();
+
+<span class="k">function</span> frame(now) {
+  <span class="k">let</span> elapsed = (now - last) / 1000;
+  last = now;
+  <span class="k">if</span> (elapsed > 0.25) elapsed = 0.25;   <span class="cm">// 切后台回来时防止"追帧爆炸"</span>
+  acc += elapsed;
+  <span class="k">while</span> (acc >= STEP) { update(STEP); acc -= STEP; }
+  render(acc / STEP);                    <span class="cm">// 用剩余比例做插值</span>
+  requestAnimationFrame(frame);
+}</pre>
+
+    <h3>6.2 存档:本地为主,云端兜底,乐观锁防覆盖</h3>
+    <p>小游戏最典型的数据事故是"两台设备同时登录,旧数据把新数据覆盖了"。骨架采用三层策略:</p>
+    <ul class="tight">
+      <li><b>实时写本地</b>(<code>wx.setStorageSync</code>):零延迟,断网也能玩,每关结束就写。</li>
+      <li><b>关键节点异步上云</b>(过关、购买、领奖后):不阻塞玩法,失败静默重试。</li>
+      <li><b>乐观锁</b>:每次存档带递增 <code>version</code>,云函数只在 <code>新 version &gt; 库中 version</code> 时写入,从根上杜绝迟到旧数据覆盖。</li>
+    </ul>
+    <div class="note danger">
+      <span class="ico">🔒</span>
+      <div>
+        <p><b>幂等性提醒:</b>所有"发奖"类上报(签到、通关奖励、广告奖励)必须在服务端做幂等。玩家断网重连后重复上报是常态,不是异常。用唯一索引或奖励发放记录表来保证"一局只发一次"。</p>
+      </div>
+    </div>
+
+    <h3>6.3 排行榜:双轨设计</h3>
+    <table>
+      <thead><tr><th style="width:16%">类型</th><th style="width:26%">技术方案</th><th style="width:29%">优点</th><th style="width:29%">何时用</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>全服榜 / 周榜</b><br><span class="tag t-green">首发做这个</span></td>
+          <td>云数据库 <code>user_stats.bestScore</code> 降序查询,名次用聚合管道算</td>
+          <td>零授权、零流失、可做段位划分、数据自己完全掌控</td>
+          <td>冷启动冲 DAU 阶段</td>
+        </tr>
+        <tr>
+          <td><b>好友榜 / 群榜</b><br><span class="tag t-warn">第 2 周迭代</span></td>
+          <td>开放数据域:主域 <code>wx.setUserCloudStorage</code> 上报 → 子域 <code>wx.getFriendCloudStorage</code> 读取 → 画到 <code>sharedCanvas</code></td>
+          <td>社交压力天然带来留存与回流,群榜能带动群内传播</td>
+          <td>玩法验证成功、需要提留存时</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><b>开放数据域的硬约束(踩坑预警):</b>子域是独立 JS 环境,<b>不能访问主域的任何变量</b>,只能用 <code>sharedCanvas</code> 绘图、靠 <code>postMessage</code> 通信;而且子域里<b>不能用 DOM</b>,所有文字头像都要用 Canvas API 画。骨架的 <code>openDataContext/index.js</code> 已实现完整的好友榜获取、排序、当前用户插入与差值计算。</p>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 7. 增长 ========== -->
+  <section>
+    <h2><span class="num">7</span>用户增长方案(本项目的核心诉求)</h2>
+    <p class="lead">"快速上线"之后紧接着就是"获得用户"。小游戏的用户获取 = <b>社交裂变(免费,为主)+ 广告买量(付费,为辅)+ 自然流量(靠运营)</b>。1–2 人团队 4 周内应该只做免费的社交裂变,买量等留存数据验证后再开。</p>
+
+    <h3>7.1 社交裂变:三个可立即落地的机制</h3>
+    <div class="grid g3">
+      <div class="card">
+        <h4>① 好友超越提示</h4>
+        <p style="font-size:13.4px;margin:0;">结算时明确告诉玩家"再得 X 分就超过好友 @张三"。这是小游戏最有效的回流钩子——比任何奖励都管用。</p>
+      </div>
+      <div class="card">
+        <h4>② 群排行榜</h4>
+        <p style="font-size:13.4px;margin:0;">玩家分享到群后,群成员点进来即形成群榜竞争。分享卡片带上 <code>shareTicket</code> 才能取群数据,务必在 <code>wx.onShow</code> 里捕获。</p>
+      </div>
+      <div class="card">
+        <h4>③ 助力 / 组队玩法</h4>
+        <p style="font-size:13.4px;margin:0;">"邀请 1 位好友组队解锁奖励"——把分享包装成协作而非索取,合规且转化高。<b>但绝不能做成"必须分享 N 人才能继续"。</b></p>
+      </div>
+    </div>
+
+    <h3>7.2 分享卡片技术要点</h3>
+<pre class="code"><span class="cm">// platform/share.js — 分享卡片必须逐次动态生成,不要用固定文案</span>
+<span class="k">export function</span> shareScore(ctx) {
+  <span class="k">return</span> {
+    title: <span class="s">`我在《${GAME_NAME}》拿了 ${ctx.score} 分,来挑战我!`</span>,
+    imageUrl: <span class="s">'./assets/images/share-card.png'</span>,   <span class="cm">// 5:4 比例,建议 500×400</span>
+    query: <span class="s">`from=share&score=${ctx.score}&uid=${ctx.uid}`</span>, <span class="cm">// 带上归因参数</span>
+  };
+}
+<span class="cm">// ⚠️ 合规红线:文案不得出现"分享到N个群""邀请X人得奖励"等诱导表述</span>
+<span class="cm">// ⚠️ 分享回调 success 只代表分享了,不代表对方点开,勿据此发重奖</span></pre>
+
+    <h3>7.3 留存机制(决定能不能留住拉来的用户)</h3>
+    <ul class="tight">
+      <li><b>每日签到</b> —— 连续签到递增奖励,第 7 天给大额道具。骨架已有 <code>dailySign</code> 云函数。</li>
+      <li><b>体力系统</b> —— 限制单日局数,制造"明日再来"的动机(注意:体力恢复节奏别太苛刻,休闲游戏 3–5 分钟回 1 点即可)。</li>
+      <li><b>每日任务</b> —— 3 个轻任务(打 3 局 / 得 1 次最高分 / 分享 1 次),给固定金币。</li>
+      <li><b>周榜重置</b> —— 每周一刷新周榜,给新玩家"重新开始"的机会,给老玩家"守榜"的压力。</li>
+      <li><b>消息召回</b> —— 通过绑定公众号 / 服务号做节点性召回(具体消息能力以官方文档当前支持范围为准)。</li>
+    </ul>
+
+    <h3>7.4 自然流量与平台资源</h3>
+    <ul class="tight">
+      <li><b>名称即关键词</b> —— 小游戏名称直接影响搜索命中,建议「品类词 + 差异化词」,如「成语接龙大挑战」。</li>
+      <li><b>冲新游榜</b> —— 上线首周集中导量,争取进入类目新游榜,榜单位置是最便宜的自然流量。</li>
+      <li><b>视频号联动</b> —— 把游戏高光时刻做成短视频挂载游戏入口,视频号是目前性价比很高的带量渠道。</li>
+      <li><b>分享图优化</b> —— 5:4 比例的分享卡片是玩家在群里看到的唯一素材,值得单独设计,不要用游戏截图凑。</li>
+    </ul>
+
+    <div class="note danger">
+      <span class="ico">🚫</span>
+      <div>
+        <p><b>合规红线(触碰即被驳回或处罚):</b><br>
+        ① 禁止<b>强制分享</b>——"分享后才能继续游戏"是明确违规;<br>
+        ② 禁止<b>诱导分享</b>——文案不得出现"分享给 N 人""邀请 X 人解锁";<br>
+        ③ 禁止<b>诱导关注公众号</b>、诱导下载 App;<br>
+        ④ 广告<b>不得强制观看</b>,激励视频必须由玩家主动点击触发。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 8. 合规 ========== -->
+  <section>
+    <h2><span class="num">8</span>资质与合规:最容易被卡死的环节</h2>
+    <p class="lead">技术再快,资质没准备好一样上不了线。<b>软著申请周期较长,必须在第 1 天就启动</b>——这是整个项目最长的关键路径,不是开发。</p>
+
+    <table>
+      <thead><tr><th style="width:20%">资质</th><th style="width:14%">是否必需</th><th style="width:32%">说明</th><th style="width:34%">关键提醒</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>软件著作权</b></td><td><span class="tag t-red">必需</span></td>
+          <td>代码归属的法律证明,所有小游戏上线审核的必备材料</td>
+          <td><b>周期通常数月,第 1 天就要启动</b>;著作权人名称必须与小游戏账号主体一致,否则需授权文件</td>
+        </tr>
+        <tr>
+          <td><b>工信部备案</b></td><td><span class="tag t-red">必需</span></td>
+          <td>所有在境内运营的小程序/小游戏都需完成</td>
+          <td>通过微信公众平台提交,平台代为申报,一般数个工作日至数周</td>
+        </tr>
+        <tr>
+          <td><b>游戏版号(ISBN)</b></td><td><span class="tag t-green">纯广告变现可免</span></td>
+          <td>仅当包含虚拟支付(内购)时必须具备</td>
+          <td>版号申请周期长且不确定,<b>这是"纯广告变现(IAA)"成为独立开发者首选模式的根本原因</b></td>
+        </tr>
+        <tr>
+          <td><b>主体选择</b></td><td><span class="tag t-warn">影响商业模式</span></td>
+          <td>个人主体 / 企业主体(含个体工商户)</td>
+          <td><b>个人主体无法开通虚拟支付</b>,只能靠广告变现;想做内购必须企业主体</td>
+        </tr>
+        <tr>
+          <td><b>隐私协议</b></td><td><span class="tag t-red">必需</span></td>
+          <td>后台配置有效链接,首屏需有合规授权弹窗</td>
+          <td>未配置隐私协议会直接驳回;收集任何用户信息前必须有授权流程</td>
+        </tr>
+        <tr>
+          <td><b>防沉迷 / 实名认证</b></td><td><span class="tag t-red">必需</span></td>
+          <td>网络游戏需接入实名认证与未成年人保护机制</td>
+          <td>属于游戏类目强监管项,上线前务必按平台最新要求接入</td>
+        </tr>
+        <tr>
+          <td><b>类目选择</b></td><td><span class="tag t-red">必需</span></td>
+          <td>一级类目固定为"游戏",二级类目发布前可改、发布后锁定</td>
+          <td>二级类目要与实际玩法一致,类目与内容不符是常见驳回原因</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note warn">
+      <span class="ico">⏳</span>
+      <div>
+        <p><b>给 4 周排期的最重要一条建议:</b>把"提审"放在第 3 周末而不是第 4 周末。审核有不确定性,首次被驳回需要整改重提,如果第 4 周才提审,整个上线时间会被审核周期直接吃掉。留出 1 周缓冲。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 9. 排期 ========== -->
+  <section>
+    <h2><span class="num">9</span>4 周上线排期(1–2 人团队)</h2>
+    <p class="lead">关键原则:<b>资质并行启动,技术串行推进,提审提前到第 3 周末。</b></p>
+
+    <div class="sched">
+      <div class="week">
+        <div class="wk">第 1 周<small>地基 + 资质</small></div>
+        <ul>
+          <li><b>D1 立即启动</b>:注册小游戏账号(企业/个体主体)、提交软著、启动工信部备案</li>
+          <li>确定玩法原型与设计分辨率,定好美术资源规格(避免后期返工)</li>
+          <li>搭建工程骨架:入口配置、框架层、平台层、云开发环境开通</li>
+          <li>完成 <code>login</code> 云函数 + 数据库集合与索引创建</li>
+          <li><b>验收:能跑通"启动 → 静默登录 → 进主页"</b></li>
+        </ul>
+      </div>
+      <div class="week">
+        <div class="wk">第 2 周<small>核心玩法闭环</small></div>
+        <ul>
+          <li>实现核心玩法(单局能完整跑完并有明确胜负/分数)</li>
+          <li>接入结算页:<code>submitScore</code> 云函数 + 服务端防作弊四道防线</li>
+          <li>本地存档 + 关键节点异步上云</li>
+          <li>基础 UI:主页、结算页、设置页(音量/震动)</li>
+          <li><b>验收:一局完整可玩,分数能上榜,退出重进数据不丢</b></li>
+        </ul>
+      </div>
+      <div class="week">
+        <div class="wk">第 3 周<small>增长 + 提审</small></div>
+        <ul>
+          <li>全服榜 + 周榜 + 我的排名与超越提示</li>
+          <li>分享接入:动态分享卡片 + 归因参数 + 分享回执</li>
+          <li>每日签到 / 每日任务 / 体力系统</li>
+          <li>埋点体系(启动、开局、结算、分享、留存)</li>
+          <li><b>周末:提交审核 + 配置隐私协议</b></li>
+        </ul>
+      </div>
+      <div class="week">
+        <div class="wk">第 4 周<small>打磨 + 上线</small></div>
+        <ul>
+          <li>开放数据域好友榜 / 群榜(审核期间并行开发,不浪费时间)</li>
+          <li>性能优化:包体积压缩、首屏时序、内存与 DrawCall</li>
+          <li>真机兼容测试:分层机型(iOS / 高中低端安卓 / 弱网)</li>
+          <li>审核驳回整改(预留这一环的缓冲时间)</li>
+          <li><b>上线 → 灰度 → 观察留存与分享率数据 → 决定是否买量</b></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 10. 质量 ========== -->
+  <section>
+    <h2><span class="num">10</span>性能与质量标准</h2>
+    <div class="grid g2">
+      <table>
+        <thead><tr><th>指标</th><th>目标值</th></tr></thead>
+        <tbody>
+          <tr><td>主包体积</td><td><b>≤ 2MB</b>(硬上限 4MB)</td></tr>
+          <tr><td>首次启动耗时</td><td>≤ 1.5s(中端安卓真机)</td></tr>
+          <tr><td>二次启动(有缓存)</td><td>≤ 0.8s</td></tr>
+          <tr><td>首屏可交互</td><td>≤ 1.2s</td></tr>
+          <tr><td>运行帧率</td><td>≥ 50 FPS(低端机 ≥ 40)</td></tr>
+          <tr><td>内存占用</td><td>&lt; 256MB(真机硬约束)</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>指标</th><th>目标值</th></tr></thead>
+        <tbody>
+          <tr><td>崩溃率</td><td>&lt; 0.1%</td></tr>
+          <tr><td>分享打开转化率</td><td>&gt; 15%</td></tr>
+          <tr><td>次日留存</td><td>&gt; 30%</td></tr>
+          <tr><td>7 日留存</td><td>&gt; 12%</td></tr>
+          <tr><td>平均单局时长</td><td>&gt; 90s</td></tr>
+          <tr><td>广告观看率(若接 IAA)</td><td>&gt; 25% 玩家触发激励视频</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>10.1 性能红线清单</h3>
+    <ul class="tight">
+      <li><b>DrawCall 合并</b> —— 同屏图片尽量打成图集(atlas),这是小游戏最大收益的优化项。</li>
+      <li><b>避免逐帧创建对象</b> —— Canvas 的 <code>fillText</code>、渐变、阴影都很贵;文字用离屏 Canvas 缓存成图片复用。</li>
+      <li><b>及时释放</b> —— 场景切换时主动置空大图引用并调用 <code>wx.triggerGC()</code>,防止内存持续上涨。</li>
+      <li><b>切后台即暂停</b> —— <code>wx.onHide</code> 里立刻暂停主循环和音频,否则回前台会掉帧甚至闪退。</li>
+      <li><b>图片尺寸按需</b> —— 2 倍图足够,不要用 3 倍超大图塞主包。</li>
+    </ul>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 11. 风险 ========== -->
+  <section>
+    <h2><span class="num">11</span>风险清单与应对</h2>
+    <table>
+      <thead><tr><th style="width:26%">风险</th><th style="width:12%">等级</th><th style="width:62%">应对措施</th></tr></thead>
+      <tbody>
+        <tr><td>软著/备案周期超出预期</td><td><span class="tag t-red">高</span></td><td>第 1 天启动,开发与资质完全并行;提前准备好代码文档与说明书模板</td></tr>
+        <tr><td>审核被驳回拖延上线</td><td><span class="tag t-red">高</span></td><td>第 3 周末提审留缓冲;提前啃平台审核规范,重点是隐私协议、类目匹配、诱导分享红线</td></tr>
+        <tr><td>玩法不成立,留存崩盘</td><td><span class="tag t-red">高</span></td><td>第 2 周就做最小可玩版本找人试玩;<b>先验证单局乐趣,再投入美术和系统</b></td></tr>
+        <tr><td>云函数冷启动拖慢登录</td><td><span class="tag t-warn">中</span></td><td>关键路径配置预留实例;客户端 3s 超时 + 本地降级,登录失败不阻塞单机玩法</td></tr>
+        <tr><td>主包超 4MB 无法上传</td><td><span class="tag t-warn">中</span></td><td>每周检查包体积;严格守住"主包只放首屏所需"的原则,大资源一律走 CDN</td></tr>
+        <tr><td>分数被作弊刷榜</td><td><span class="tag t-warn">中</span></td><td>服务端四道防线;榜单只展示去重后的最高分;必要时加人工封禁</td></tr>
+        <tr><td>1–2 人产能不足</td><td><span class="tag t-warn">中</span></td><td>严格控制 MVP 范围:首发只做"单局玩法 + 上榜 + 分享",社交系统全部后置</td></tr>
+        <tr><td>兼容性碎片化</td><td><span class="tag t-blue">低</span></td><td>设定最低基础库版本;新 API 做存在性判断;真机分层测试</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="div">
+
+  <!-- ========== 12. 骨架 ========== -->
+  <section>
+    <h2><span class="num">12</span>配套工程骨架已生成</h2>
+    <p class="lead">本方案对应的可运行工程骨架已在本项目中生成,可直接用微信开发者工具导入根目录运行。</p>
+
+    <table>
+      <thead><tr><th style="width:34%">文件</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td><code>game.js</code> / <code>game.json</code></td><td>小游戏入口与全局配置(含分包与开放数据域声明)</td></tr>
+        <tr><td><code>js/framework/</code></td><td>主循环、场景栈、事件总线、资源加载、存档、UI 绘制、屏幕适配</td></tr>
+        <tr><td><code>js/platform/</code></td><td>wx API 封装、登录、云调用、分享、广告、生命周期、埋点</td></tr>
+        <tr><td><code>js/scenes/</code></td><td>Boot / Home / Game / Rank 四个场景,<code>game-scene.js</code> 是玩法挂载点</td></tr>
+        <tr><td><code>openDataContext/</code></td><td>好友排行榜(独立 JS 环境,sharedCanvas 渲染)</td></tr>
+        <tr><td><code>cloudfunctions/</code></td><td>login / submitScore / getRank / saveArchive / dailySign 五个云函数</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note ok">
+      <span class="ico">🚀</span>
+      <div>
+        <p><b>三步跑起来:</b>① 用微信开发者工具导入项目根目录,填入自己的 AppID;② 开通云开发环境,把环境 ID 写入 <code>js/config/config.js</code>;③ 右键 <code>cloudfunctions</code> 下每个函数 → 上传并部署(云端安装依赖)。然后即可在模拟器中看到完整的"启动 → 登录 → 主页 → 开局 → 结算上榜 → 分享"闭环。</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">微信小游戏架构设计方案 v1.0 · 基于 2026 年 9 月微信官方平台口径整理</p>
+
+</div>
+</body>
+</html>

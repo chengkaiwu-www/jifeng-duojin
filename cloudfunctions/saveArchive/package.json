@@ -1,0 +1,9 @@
+{
+  "name": "saveArchive",
+  "version": "1.0.0",
+  "description": "存档同步(乐观锁防覆盖)",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

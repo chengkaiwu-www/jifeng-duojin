@@ -1,0 +1,9 @@
+{
+  "name": "getRank",
+  "version": "1.0.0",
+  "description": "全服榜 / 周榜查询(带轻量缓存)",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

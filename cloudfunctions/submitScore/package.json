@@ -1,0 +1,9 @@
+{
+  "name": "submitScore",
+  "version": "1.0.0",
+  "description": "分数上报 + 服务端防作弊 + 埋点写入",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

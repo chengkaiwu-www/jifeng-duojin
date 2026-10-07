@@ -1,0 +1,18 @@
+{
+  "deviceOrientation": "portrait",
+  "showStatusBar": false,
+  "networkTimeout": {
+    "request": 8000,
+    "downloadFile": 15000,
+    "uploadFile": 15000
+  },
+  "subpackages": [
+    {
+      "name": "play",
+      "root": "subpackages/play/"
+    }
+  ],
+  "openDataContext": "openDataContext",
+  "permission": {},
+  "resizable": false
+}
